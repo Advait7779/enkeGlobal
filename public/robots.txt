@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+
+# Block admin panel from search engines
+Disallow: /admin
+Disallow: /admin/
+
+Sitemap: https://enkeglobal.com/sitemap.xml

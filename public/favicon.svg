@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- Outer gold circle with dark border -->
+  <circle cx="50" cy="50" r="45" fill="#D4AF37" stroke="#111111" stroke-width="3" />
+  <!-- Inner dark ring -->
+  <circle cx="50" cy="50" r="39" fill="none" stroke="#111111" stroke-width="1.5" />
+  
+  <!-- Advocate Bands Symbol -->
+  <g fill="#111111">
+    <!-- Left bow wing -->
+    <path d="M50 33 L35 24 C37 32, 41 36, 44 36 Z" />
+    <!-- Right bow wing -->
+    <path d="M50 33 L65 24 C63 32, 59 36, 56 36 Z" />
+    <!-- Center knot -->
+    <ellipse cx="50" cy="32.5" rx="3.5" ry="2.5" />
+    <!-- Left band -->
+    <rect x="42.5" y="38" width="6.5" height="32" rx="0.5" />
+    <!-- Right band -->
+    <rect x="51" y="38" width="6.5" height="32" rx="0.5" />
+  </g>
+</svg>
