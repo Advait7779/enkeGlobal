@@ -62,7 +62,7 @@ Create one PostgreSQL database and two applications from the same GitHub reposit
 - Build pack: `Dockerfile`
 - Dockerfile: `/Dockerfile`
 - Exposed port: `5009`
-- Health check path: `/api/health`
+- Container health check path: `/api/health/live`
 - Pre-deployment command: `npm run migrate`
 - Domain example: `https://api.example.com`
 - Persistent storage destination: `/app/uploads`
@@ -108,7 +108,7 @@ Set `CLIENT_ORIGIN` on the backend to the exact frontend origin. Multiple allowe
 ## Deployment order
 
 1. Deploy PostgreSQL.
-2. Deploy the backend and confirm `/api/health` reports `database: connected`.
+2. Deploy the backend and confirm `/api/health/live` returns HTTP 200, then confirm `/api/health` reports `database: connected`.
 3. Run the one-time backend seed.
 4. Deploy the frontend with the backend URL as `VITE_API_BASE_URL`.
 5. Test admin login, product add/edit/delete, image upload, Excel import, public product images, enquiry submission and WhatsApp redirection.

@@ -4,6 +4,10 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV PORT=5009
 
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends curl \
+  && rm -rf /var/lib/apt/lists/*
+
 COPY package.json package-lock.json ./
 RUN npm ci --omit=dev
 
@@ -15,6 +19,6 @@ USER node
 EXPOSE 5009
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
-  CMD node -e "const port=process.env.PORT||'5009';fetch('http://127.0.0.1:'+port+'/api/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"
+  CMD curl --fail --silent --show-error "http://127.0.0.1:${PORT:-5009}/api/health/live" || exit 1
 
 CMD ["npm", "start"]

@@ -67,7 +67,12 @@ app.use('/api/enquiries', enquiryLimiter);
 app.use('/api/enquiries', require('./routes/enquiries'));
 app.use('/api/upload', require('./routes/upload'));
 
-// Health check
+// Liveness check for Docker/Coolify. Database readiness is checked separately.
+app.get('/api/health/live', (_req, res) => {
+  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
+// Readiness check used to verify PostgreSQL connectivity after deployment.
 app.get('/api/health', async (_req, res) => {
   try {
     await pool.query('SELECT 1');
