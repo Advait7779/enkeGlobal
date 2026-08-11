@@ -1,5 +1,5 @@
 {
-  "name": "enkeglobal-server",
+  "name": "enkeglobal-backend",
   "version": "1.0.0",
   "type": "commonjs",
   "main": "index.js",

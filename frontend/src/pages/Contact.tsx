@@ -1,6 +1,7 @@
 import { MapPin, Phone, Mail, Clock, Send, MessageCircle, ShoppingCart, Package, Plus, Search, Minus, X } from "lucide-react";
 import { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+import { apiUrl, assetUrl } from "../lib/api";
 
 interface ProductState {
   id: number;
@@ -53,7 +54,7 @@ export default function Contact() {
     setProductModalOpen(true);
     if (allProducts.length === 0) {
       setLoadingProducts(true);
-      fetch("/api/products?limit=500")
+      fetch(apiUrl("/api/products?limit=500"))
         .then((res) => {
           if (!res.ok) throw new Error();
           return res.json() as Promise<{ products?: unknown[] }>;
@@ -144,7 +145,9 @@ export default function Contact() {
 
     try {
       const primaryItem = enquiryProducts[0];
-      const res = await fetch("/api/enquiries", {
+      const subjectLabel = SUBJECT_OPTIONS.find((option) => option.value === formData.subject)?.label
+        || formData.subject.trim();
+      const res = await fetch(apiUrl("/api/enquiries"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -167,48 +170,63 @@ export default function Contact() {
 
       const resData = await res.json() as { web3forms_key?: string | null };
       if (resData.web3forms_key) {
-        try {
-          const web3res = await fetch("https://api.web3forms.com/submit", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              "Accept": "application/json"
-            },
-            body: JSON.stringify({
-              access_key: resData.web3forms_key,
-              from_name: formData.name,
-              replyto: formData.email,
-              subject: `New ENKEglobal Enquiry: ${formData.subject}`,
-              "User Name": formData.name,
-              "User Email": formData.email,
-              "User Phone": formData.phone || "N/A",
-              "Subject": formData.subject,
-              "Message": formData.message,
-              "Product Enquired": primaryItem?.product.name || "N/A",
-              "Quantity": primaryItem?.quantity || 1
-            })
-          });
+        void fetch("https://api.web3forms.com/submit", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Accept": "application/json"
+          },
+          keepalive: true,
+          body: JSON.stringify({
+            access_key: resData.web3forms_key,
+            from_name: formData.name,
+            replyto: formData.email,
+            subject: `New ENKEglobal Enquiry: ${subjectLabel}`,
+            "User Name": formData.name,
+            "User Email": formData.email,
+            "User Phone": formData.phone || "N/A",
+            "Subject": subjectLabel,
+            "Message": formData.message,
+            "Product Enquired": primaryItem?.product.name || "N/A",
+            "Quantity": primaryItem?.quantity || 1
+          })
+        }).then((web3res) => {
           if (!web3res.ok) {
             console.error("Web3Forms client-side submission error:", web3res.status);
           }
-        } catch (web3Err) {
+        }).catch((web3Err) => {
           console.error("Web3Forms client-side submission failed:", web3Err);
-        }
+        });
       }
 
-      // Construct WhatsApp message and redirect
-      const whatsappText = `*New ENKEglobal Enquiry*
+      const whatsappLines = [
+        "Hello ENKE Global,",
+        "",
+        "*NEW WEBSITE ENQUIRY*",
+        "------------------------------",
+        `*Name:* ${formData.name.trim()}`,
+        `*Email:* ${formData.email.trim()}`,
+        `*Phone:* ${formData.phone.trim() || "Not provided"}`,
+        `*Subject:* ${subjectLabel}`,
+        "",
+        "*Message:*",
+        formData.message.trim(),
+      ];
 
-*Name:* ${formData.name}
-*Email:* ${formData.email}
-*Phone:* ${formData.phone || "N/A"}
-*Subject:* ${formData.subject || "N/A"}
+      if (primaryItem) {
+        whatsappLines.push(
+          "",
+          "*Product Details:*",
+          `*Product:* ${primaryItem.product.name}`,
+          `*Quantity:* ${primaryItem.quantity || 1}`,
+        );
+      }
 
-*Message:*
-${formData.message}`;
+      whatsappLines.push("", "Please contact me regarding this enquiry.");
+      const whatsappText = whatsappLines.join("\n");
 
       const whatsappUrl = `https://wa.me/2347063633299?text=${encodeURIComponent(whatsappText)}`;
-      window.open(whatsappUrl, "_blank");
+      window.location.href = whatsappUrl;
 
       setSentEmail(formData.email);
       setSent(true);
@@ -257,7 +275,7 @@ ${formData.message}`;
                 <div key={item.product.id} className="flex items-center gap-4 bg-white p-4 rounded-lg border border-blue-100 shadow-sm relative group">
                   <div className="w-20 h-20 bg-white rounded-lg border border-gray-200 overflow-hidden flex-shrink-0 shadow-sm">
                     <img
-                      src={item.product.image}
+                      src={assetUrl(item.product.image)}
                       alt={item.product.name}
                       className="w-full h-full object-contain p-2"
                       onError={(e) => {
@@ -737,7 +755,7 @@ ${formData.message}`;
                             >
                               <div className="w-16 h-16 bg-gray-50 border border-gray-100 rounded-lg overflow-hidden flex-shrink-0 flex items-center justify-center p-1 group-hover:border-emerald-200 transition">
                                 <img
-                                  src={p.image}
+                                  src={assetUrl(p.image)}
                                   alt={p.name}
                                   className="w-full h-full object-contain"
                                   onError={(e) => {

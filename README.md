@@ -1,60 +1,133 @@
 # ENKEglobal
 
-React/Vite storefront with an Express/PostgreSQL CMS and enquiry lead tracker.
+React/Vite storefront with a separate Express/PostgreSQL CMS API and enquiry lead tracker.
+
+## Project structure
+
+```text
+ENKEglobal/
+├── frontend/                 React, Vite, Nginx and public website assets
+│   ├── src/
+│   ├── public/
+│   ├── Dockerfile
+│   └── .env.example
+├── backend/                  Express API, CMS, uploads and PostgreSQL scripts
+│   ├── data/Products.json
+│   ├── migrations/
+│   ├── public/Images/        Existing catalogue images (unchanged)
+│   ├── routes/
+│   ├── uploads/              New CMS/Excel uploads; ignored by Git
+│   ├── Dockerfile
+│   └── .env.example
+└── package.json              Convenience commands for local development
+```
+
+The frontend and backend are independent applications. In production, the frontend reads `VITE_API_BASE_URL` and calls the backend directly. Existing catalogue images are served by the backend from `/Images`; new CMS and Excel-import images are served from persistent storage at `/uploads`.
 
 ## Local setup
 
-1. Install frontend and backend dependencies:
+1. Install both applications:
 
    ```powershell
-   npm.cmd ci
-   npm.cmd run server:install
+   npm.cmd run install:all
    ```
 
-2. Copy `server/.env.example` to `server/.env` and set the database, admin, JWT, and enquiry email values.
-3. Create/upgrade the database and seed the product catalogue:
+2. Copy `backend/.env.example` to `backend/.env` and configure PostgreSQL, JWT and admin credentials.
+3. For local development, set `UPLOAD_DIR=uploads`. `VITE_API_BASE_URL` can remain unset because Vite proxies API and image requests to port 4000.
+4. Prepare the database:
 
    ```powershell
-   npm.cmd run server:migrate
-   npm.cmd run server:seed
+   npm.cmd run migrate
+   npm.cmd run seed
    ```
 
-4. Run the API with `npm.cmd run server:dev`, then run the frontend with `npm.cmd run dev` in a second terminal.
+5. Run these commands in separate terminals:
 
-## Production deployment
+   ```powershell
+   npm.cmd run dev:backend
+   npm.cmd run dev:frontend
+   ```
 
-Deploy this project as a Node service, not as a static-only site. The Node process serves both the built frontend and `/api`, which keeps CMS and form requests on the same origin.
+Frontend: `http://localhost:5174`
 
-- Build command: `npm ci && npm run server:install && npm run build`
-- Migration command: `npm run server:migrate`
-- One-time seed command for an empty database: `npm run server:seed`
-- Start command: `npm start`
-- Required environment: `NODE_ENV=production`, database settings, `JWT_SECRET`, `ADMIN_EMAIL`, `ADMIN_PASSWORD`, and `ENQUIRY_TO_EMAIL`
-- Health check: `/api/health` must return HTTP 200 and `database: connected`
+Backend health: `http://localhost:4000/api/health`
 
-Product images uploaded from the CMS are stored on disk. On container or cloud hosting, mount a persistent disk and set `UPLOAD_DIR` to that mount. Without persistent storage, newly uploaded images can disappear after a restart or redeploy. Existing images in `public/Images` remain part of the build.
+## Coolify deployment
 
-The supplied production setup assumes one Node service. If frontend and backend are deployed separately, frontend API URL handling must also be added and `CLIENT_ORIGIN` must allow the frontend origin.
+Create one PostgreSQL database and two applications from the same GitHub repository.
 
-## Pre-deployment checks
+### 1. Backend application
+
+- Base directory: `/backend`
+- Build pack: `Dockerfile`
+- Dockerfile: `/Dockerfile`
+- Exposed port: `4000`
+- Health check path: `/api/health`
+- Pre-deployment command: `npm run migrate`
+- Domain example: `https://api.example.com`
+- Persistent storage destination: `/app/uploads`
+
+Backend environment:
+
+```env
+NODE_ENV=production
+PORT=4000
+DATABASE_URL=<Coolify PostgreSQL internal URL>
+DB_SSL=false
+JWT_SECRET=<at least 32 random characters>
+ADMIN_EMAIL=<admin email>
+ADMIN_PASSWORD=<strong unique password>
+CLIENT_ORIGIN=https://www.example.com
+UPLOAD_DIR=/app/uploads
+EXCEL_IMPORT_TMP_DIR=/tmp/enkeglobal-excel-imports
+WEB3FORMS_ACCESS_KEY=
+ENQUIRY_TO_EMAIL=
+```
+
+After the first backend deployment, open its Coolify terminal and run `npm run seed` once. Do not run the seed repeatedly unless the database is empty; existing product IDs are skipped.
+
+### 2. Frontend application
+
+- Base directory: `/frontend`
+- Build pack: `Dockerfile`
+- Dockerfile: `/Dockerfile`
+- Exposed port: `80`
+- Health check path: `/healthz`
+- Domain example: `https://www.example.com`
+
+Frontend build variable:
+
+```env
+VITE_API_BASE_URL=https://api.example.com
+```
+
+Mark `VITE_API_BASE_URL` as a build-time variable in Coolify. It must contain the backend origin without a trailing slash and without an `/api` suffix. Redeploy the frontend whenever this value changes.
+
+Set `CLIENT_ORIGIN` on the backend to the exact frontend origin. Multiple allowed origins can be comma-separated.
+
+## Deployment order
+
+1. Deploy PostgreSQL.
+2. Deploy the backend and confirm `/api/health` reports `database: connected`.
+3. Run the one-time backend seed.
+4. Deploy the frontend with the backend URL as `VITE_API_BASE_URL`.
+5. Test admin login, product add/edit/delete, image upload, Excel import, public product images, enquiry submission and WhatsApp redirection.
+
+## Product image persistence
+
+Never mount persistent storage over `backend/public/Images`; those are the existing version-controlled catalogue images. Mount storage only at `/app/uploads`. Back up both PostgreSQL and the uploads volume.
+
+## Excel product import
+
+Administrators can import `.xlsx` workbooks into a selected category. The application accepts files up to 1 GB, 10,000 products, 10 MB per embedded image and 900 MB of embedded images. ExcelJS reads the workbook in memory, so a 1 GB workbook is not guaranteed to complete on an 8 GB server. Use one import at a time and load-test representative large workbooks.
+
+Coolify's proxy request timeout must also be increased for uploads that can take longer than its default limit. The temporary import directory needs enough free disk space for the workbook and extraction overhead.
+
+## Verification commands
 
 ```powershell
 npm.cmd run typecheck
 npm.cmd run lint
 npm.cmd run build
+npm.cmd test
 ```
-
-After deployment, verify admin login, product add/edit/delete, image upload, public product visibility, enquiry submission, lead status updates, and email notification delivery. FormSubmit may send a one-time activation message to `ENQUIRY_TO_EMAIL` before notifications begin.
-
-## Excel product import
-
-Administrators can open **Products**, choose **Import from Excel**, select an existing category or add a new one, and upload an `.xlsx` workbook. Every imported row is assigned to the category selected in the popup; workbook category values are intentionally ignored.
-
-- Required column: `Name` or `Product Name`
-- Optional columns: `Manufacturer`, `Description`, `In Stock`, `Rating`, `Reviews`, `Image`, `Badge`, `Badge Color`, `Price`, and `Old Price`
-- Images: place one embedded image on the same row as its product, or enter an HTTP image URL or existing server image filename in the `Image` column
-- Limits: 1 GB per workbook, 10,000 products per import, 10 MB per embedded image, and 900 MB of embedded images per import
-
-Large workbooks are uploaded to temporary disk instead of being buffered fully by the HTTP upload layer. Database writes are batched inside one transaction, invalid rows prevent a partial database import, and temporary workbooks/uploaded images are removed after failure or completion.
-
-For 1 GB uploads, the hosting platform and any reverse proxy must also allow a request body of at least 1 GB and provide sufficient temporary disk, RAM, and request time. For example, an Nginx deployment needs an appropriate `client_max_body_size` and proxy timeout configuration; provider-level limits can still reject the upload before it reaches Node.

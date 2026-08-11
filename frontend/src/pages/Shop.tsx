@@ -2,7 +2,8 @@ import { Heart, Eye, Star } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
-import data from "../../Products.json";
+import data from "../data/products.json";
+import { apiUrl, assetUrl } from "../lib/api";
 import { normalizeProduct, type Product } from "../lib/products";
 
 const DEFAULT_CATEGORIES = ["Electrical", "Electronic", "Mechanical"];
@@ -134,7 +135,7 @@ export default function Shop() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    fetch("/api/products?limit=250")
+    fetch(apiUrl("/api/products?limit=250"))
       .then((res) => {
         if (!res.ok) throw new Error("Failed to fetch products");
         return res.json() as Promise<{ products?: unknown[] }>;
@@ -227,7 +228,7 @@ export default function Shop() {
                 >
                   <div className="relative overflow-hidden">
                     <img
-                      src={product.image}
+                      src={assetUrl(product.image)}
                       alt={product.name}
                       className="w-full h-64 group-hover:scale-110 transition-transform duration-500 cursor-pointer"
                       onClick={() => navigate(`/product/${product.id}`)}

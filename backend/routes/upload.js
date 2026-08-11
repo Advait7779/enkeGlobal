@@ -6,7 +6,7 @@ const router = express.Router();
 const { requireAdmin } = require('../middleware/auth');
 const { uploadDir } = require('../config');
 
-// Resolve upload dir: public/Images relative to project root
+// CMS uploads are stored separately from the packaged legacy catalogue images.
 if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
 }
@@ -43,7 +43,7 @@ router.post('/', requireAdmin, upload.single('image'), (req, res) => {
   }
 
   // Return the web-accessible path
-  const imageUrl = `/Images/${req.file.filename}`;
+  const imageUrl = `/uploads/${req.file.filename}`;
   res.json({ success: true, url: imageUrl, filename: req.file.filename });
 });
 

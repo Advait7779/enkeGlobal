@@ -72,7 +72,11 @@ function parseStock(value) {
 function normalizeImageReference(value, warnings, rowNumber) {
   const reference = String(value || '').trim();
   if (!reference) return '';
-  if (/^https?:\/\//i.test(reference) || reference.startsWith('/Images/')) return reference;
+  if (
+    /^https?:\/\//i.test(reference)
+    || reference.startsWith('/Images/')
+    || reference.startsWith('/uploads/')
+  ) return reference;
 
   const filename = reference.split(/[\\/]/).pop() || '';
   const extension = path.extname(filename).slice(1).toLowerCase();

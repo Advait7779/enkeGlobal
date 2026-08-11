@@ -8,6 +8,7 @@ import {
   TrendingUp, Activity, Calendar, Menu,
   ChevronsLeft, ChevronsRight, Download, FileSpreadsheet, FileUp
 } from "lucide-react";
+import { apiUrl, assetUrl } from "../../lib/api";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 interface Product {
@@ -288,7 +289,7 @@ function ProductEditModal({
     const formData = new FormData();
     formData.append("image", file);
     try {
-      const res = await fetch("/api/upload", {
+      const res = await fetch(apiUrl("/api/upload"), {
         method: "POST",
         headers: { Authorization: `Bearer ${getToken()}` },
         body: formData,
@@ -334,7 +335,7 @@ function ProductEditModal({
             <div className="flex gap-4 items-start">
               <div className="w-24 h-24 flex-shrink-0 bg-gray-100 rounded-xl border-2 border-dashed border-gray-300 overflow-hidden flex items-center justify-center">
                 {imagePreview
-                  ? <img src={imagePreview} alt="preview" className="w-full h-full object-contain p-1" />
+                  ? <img src={assetUrl(imagePreview)} alt="preview" className="w-full h-full object-contain p-1" />
                   : <Package size={28} className="text-gray-400" />}
               </div>
               <div className="flex-1">
@@ -574,7 +575,7 @@ function ExcelImportModal({
     body.append("category", selectedCategory);
 
     try {
-      const response = await fetch("/api/products/import", {
+      const response = await fetch(apiUrl("/api/products/import"), {
         method: "POST",
         headers: { Authorization: `Bearer ${getToken()}` },
         body,
@@ -938,7 +939,7 @@ export default function AdminPanel() {
   useEffect(() => {
     const token = getToken();
     if (!token) { navigate("/admin/login"); return; }
-    fetch("/api/auth/verify", { method: "POST", headers: authHeader() })
+    fetch(apiUrl("/api/auth/verify"), { method: "POST", headers: authHeader() })
       .then((r) => { if (!r.ok) { localStorage.removeItem("enke_admin_token"); navigate("/admin/login"); } });
   }, [navigate]);
 
@@ -965,7 +966,7 @@ export default function AdminPanel() {
         ...(productSearch && { search: productSearch }),
         ...(productCategory && { category: productCategory }),
       });
-      const res = await fetch(`/api/products?${params}`, { headers: authHeader() });
+      const res = await fetch(apiUrl(`/api/products?${params}`), { headers: authHeader() });
       const data = await res.json();
       setProducts(data.products || []);
       setProductsTotal(data.total || 0);
@@ -983,7 +984,7 @@ export default function AdminPanel() {
         ...(leadSearch && { search: leadSearch }),
         ...(leadStatusFilter && { status: leadStatusFilter }),
       });
-      const res = await fetch(`/api/enquiries?${params}`, { headers: authHeader() });
+      const res = await fetch(apiUrl(`/api/enquiries?${params}`), { headers: authHeader() });
       const data = await res.json();
       setLeads(data.enquiries || []);
       setLeadsTotal(data.total || 0);
@@ -997,8 +998,8 @@ export default function AdminPanel() {
     setLoadingDashboard(true);
     try {
       const [enqRes, statsRes] = await Promise.all([
-        fetch("/api/enquiries?limit=5", { headers: authHeader() }),
-        fetch("/api/products/stats/summary", { headers: authHeader() }),
+        fetch(apiUrl("/api/enquiries?limit=5"), { headers: authHeader() }),
+        fetch(apiUrl("/api/products/stats/summary"), { headers: authHeader() }),
       ]);
       const enqData = await enqRes.json();
       setRecentEnquiries(enqData.enquiries || []);
@@ -1021,7 +1022,7 @@ export default function AdminPanel() {
 
   // ─── Save product ─────────────────────────────────────────────────────────────
   const handleSaveProduct = async (data: Omit<Product, "id">, id?: number) => {
-    const res = await fetch(id ? `/api/products/${id}` : "/api/products", {
+    const res = await fetch(apiUrl(id ? `/api/products/${id}` : "/api/products"), {
       method: id ? "PUT" : "POST",
       headers: authHeader(),
       body: JSON.stringify(data),
@@ -1043,7 +1044,7 @@ export default function AdminPanel() {
   // ─── Delete product ────────────────────────────────────────────────────────────
   const handleDeleteProduct = async (id: number) => {
     try {
-      const res = await fetch(`/api/products/${id}`, { method: "DELETE", headers: authHeader() });
+      const res = await fetch(apiUrl(`/api/products/${id}`), { method: "DELETE", headers: authHeader() });
       if (!res.ok) throw new Error();
       showToast("Product deleted");
       setDeleteConfirm(null);
@@ -1054,7 +1055,7 @@ export default function AdminPanel() {
   // ─── Delete lead ───────────────────────────────────────────────────────────────
   const handleDeleteLead = async (id: number) => {
     try {
-      const res = await fetch(`/api/enquiries/${id}`, { method: "DELETE", headers: authHeader() });
+      const res = await fetch(apiUrl(`/api/enquiries/${id}`), { method: "DELETE", headers: authHeader() });
       if (!res.ok) throw new Error();
       showToast("Lead deleted successfully");
       setDeleteLeadConfirm(null);
@@ -1066,7 +1067,7 @@ export default function AdminPanel() {
   // ─── Update lead status ────────────────────────────────────────────────────────
   const handleUpdateStatus = async (id: number, status: string) => {
     try {
-      const res = await fetch(`/api/enquiries/${id}/status`, {
+      const res = await fetch(apiUrl(`/api/enquiries/${id}/status`), {
         method: "PATCH",
         headers: authHeader(),
         body: JSON.stringify({ status }),
@@ -1083,7 +1084,7 @@ export default function AdminPanel() {
   const handleDownloadExcel = async () => {
     try {
       showToast("Preparing Excel export...");
-      const res = await fetch("/api/enquiries?limit=10000", { headers: authHeader() });
+      const res = await fetch(apiUrl("/api/enquiries?limit=10000"), { headers: authHeader() });
       if (!res.ok) throw new Error("Failed to fetch leads data");
       const data = await res.json() as { enquiries?: Enquiry[] };
       const allLeads: Enquiry[] = data.enquiries || [];
@@ -1740,7 +1741,7 @@ export default function AdminPanel() {
                                 {lead.product_name ? (
                                   <div className="flex items-center gap-2">
                                     {lead.product_image && (
-                                      <img src={lead.product_image} alt="" className="w-7 h-7 object-contain rounded border border-gray-100 bg-gray-50" />
+                                      <img src={assetUrl(lead.product_image)} alt="" className="w-7 h-7 object-contain rounded border border-gray-100 bg-gray-50" />
                                     )}
                                     <span className="text-xs text-gray-700 font-medium max-w-[120px] truncate">{lead.product_name}</span>
                                   </div>
@@ -1943,7 +1944,7 @@ export default function AdminPanel() {
                             <td className="px-5 py-3">
                               <div className="w-12 h-12 bg-gray-100 rounded-lg overflow-hidden border border-gray-200 flex items-center justify-center">
                                 {p.image ? (
-                                  <img src={p.image} alt={p.name} className="w-full h-full object-contain p-1"
+                                  <img src={assetUrl(p.image)} alt={p.name} className="w-full h-full object-contain p-1"
                                     onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
                                 ) : <Package size={18} className="text-gray-300" />}
                               </div>

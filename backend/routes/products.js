@@ -126,7 +126,7 @@ router.post('/import', requireAdmin, acceptExcelUpload, async (req, res) => {
         const filePath = path.join(uploadDir, filename);
         await fs.promises.writeFile(filePath, product.embeddedImage.buffer, { flag: 'wx' });
         createdFiles.push(filePath);
-        image = `/Images/${filename}`;
+        image = `/uploads/${filename}`;
       }
 
       preparedProducts.push({

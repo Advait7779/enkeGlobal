@@ -11,7 +11,8 @@ import {
 } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useState, useEffect } from "react";
-import data from "../../Products.json";
+import data from "../data/products.json";
+import { apiUrl, assetUrl } from "../lib/api";
 import { normalizeProduct, type Product } from "../lib/products";
 
 const products = Object.values(data).map(normalizeProduct);
@@ -60,7 +61,7 @@ export default function ProductDetail() {
     const productId = Number.parseInt(id, 10);
     const fallbackProduct = products.find((item) => item.id === productId) || null;
     setLoading(true);
-    fetch(`/api/products/${productId}`)
+    fetch(apiUrl(`/api/products/${productId}`))
       .then((res) => {
         if (!res.ok) throw new Error("Product not found");
         return res.json() as Promise<unknown>;
@@ -122,7 +123,7 @@ export default function ProductDetail() {
         <div className="grid md:grid-cols-2 gap-12 mb-12">
           <div className="bg-white rounded-lg overflow-hidden shadow-lg">
             <img
-              src={product.image}
+              src={assetUrl(product.image)}
               alt={product.name}
               className="w-full h-96"
             />

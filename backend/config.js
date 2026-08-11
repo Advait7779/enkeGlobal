@@ -21,7 +21,7 @@ module.exports = {
   clientOrigins: parseOrigins(process.env.CLIENT_ORIGIN),
   uploadDir: process.env.UPLOAD_DIR
     ? path.resolve(__dirname, process.env.UPLOAD_DIR)
-    : path.resolve(__dirname, '../public/Images'),
+    : path.resolve(__dirname, 'uploads'),
   excelImportTempDir: process.env.EXCEL_IMPORT_TMP_DIR
     ? path.resolve(__dirname, process.env.EXCEL_IMPORT_TMP_DIR)
     : path.join(os.tmpdir(), 'enkeglobal-excel-imports'),

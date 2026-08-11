@@ -3,7 +3,7 @@ const pool = require('./db');
 require('dotenv').config({ path: path.join(__dirname, '.env') });
 
 // Read products from JSON
-const productsData = require('../Products.json');
+const productsData = require('./data/Products.json');
 const products = Object.values(productsData);
 
 async function seed() {

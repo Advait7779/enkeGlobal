@@ -2,7 +2,8 @@ import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Heart, Eye, Star } from "lucide-react";
 
-import data from "../../Products.json";
+import data from "../data/products.json";
+import { apiUrl, assetUrl } from "../lib/api";
 import { normalizeProduct, type Product } from "../lib/products";
 
 const fallbackProducts = Object.values(data).map(normalizeProduct);
@@ -12,7 +13,7 @@ export default function Products() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    fetch("/api/products?limit=9")
+    fetch(apiUrl("/api/products?limit=9"))
       .then((res) => {
         if (!res.ok) throw new Error("Failed to fetch products");
         return res.json() as Promise<{ products?: unknown[] }>;
@@ -80,7 +81,7 @@ export default function Products() {
             >
               <div className="relative overflow-hidden">
                 <img
-                  src={product.image}
+                  src={assetUrl(product.image)}
                   alt={product.name}
                   className="w-full h-64 group-hover:scale-110 transition-transform duration-500 cursor-pointer"
                   onClick={() => navigate(`/product/${product.id}`)}
