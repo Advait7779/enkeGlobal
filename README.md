@@ -33,7 +33,7 @@ The frontend and backend are independent applications. In production, the fronte
    ```
 
 2. Copy `backend/.env.example` to `backend/.env` and configure PostgreSQL, JWT and admin credentials.
-3. For local development, set `UPLOAD_DIR=uploads`. `VITE_API_BASE_URL` can remain unset because Vite proxies API and image requests to port 4000.
+3. For local development, set `UPLOAD_DIR=uploads`. `VITE_API_BASE_URL` can remain unset because Vite proxies API and image requests to port 5009.
 4. Prepare the database:
 
    ```powershell
@@ -50,7 +50,7 @@ The frontend and backend are independent applications. In production, the fronte
 
 Frontend: `http://localhost:5174`
 
-Backend health: `http://localhost:4000/api/health`
+Backend health: `http://localhost:5009/api/health`
 
 ## Coolify deployment
 
@@ -61,7 +61,7 @@ Create one PostgreSQL database and two applications from the same GitHub reposit
 - Base directory: `/backend`
 - Build pack: `Dockerfile`
 - Dockerfile: `/Dockerfile`
-- Exposed port: `4000`
+- Exposed port: `5009`
 - Health check path: `/api/health`
 - Pre-deployment command: `npm run migrate`
 - Domain example: `https://api.example.com`
@@ -71,7 +71,7 @@ Backend environment:
 
 ```env
 NODE_ENV=production
-PORT=4000
+PORT=5009
 DATABASE_URL=<Coolify PostgreSQL internal URL>
 DB_SSL=false
 JWT_SECRET=<at least 32 random characters>

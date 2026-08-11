@@ -8,15 +8,15 @@ export default defineConfig({
     port: 5174,
     proxy: {
       '/api': {
-        target: 'http://localhost:4000',
+        target: 'http://localhost:5009',
         changeOrigin: true,
       },
       '/Images': {
-        target: 'http://localhost:4000',
+        target: 'http://localhost:5009',
         changeOrigin: true,
       },
       '/uploads': {
-        target: 'http://localhost:4000',
+        target: 'http://localhost:5009',
         changeOrigin: true,
       },
     },

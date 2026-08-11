@@ -12,7 +12,7 @@ function parseOrigins(value) {
 
 module.exports = {
   nodeEnv: process.env.NODE_ENV || 'development',
-  port: Number.parseInt(process.env.PORT || '4000', 10),
+  port: Number.parseInt(process.env.PORT || '5009', 10),
   jwtSecret: process.env.JWT_SECRET || '',
   adminEmail: (process.env.ADMIN_EMAIL || '').trim().toLowerCase(),
   adminPassword: process.env.ADMIN_PASSWORD || '',
