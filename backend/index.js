@@ -93,12 +93,16 @@ app.use((err, _req, res, _next) => {
   res.status(500).json({ error: message });
 });
 
+const { autoInitDatabase } = require('./services/autoInit');
+
 // ─── Start ────────────────────────────────────────────────────────────────────
 if (require.main === module) {
-  app.listen(PORT, () => {
-  console.log(`🚀 ENKEglobal API server running on http://localhost:${PORT}`);
+  app.listen(PORT, async () => {
+    console.log(`🚀 ENKEglobal API server running on http://localhost:${PORT}`);
     console.log(`Health: http://localhost:${PORT}/api/health`);
+    await autoInitDatabase();
   });
 }
 
 module.exports = app;
+
