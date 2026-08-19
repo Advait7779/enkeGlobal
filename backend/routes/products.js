@@ -167,6 +167,16 @@ router.post('/import', requireAdmin, acceptExcelUpload, async (req, res) => {
     client = await pool.connect();
     await client.query('BEGIN');
 
+    const shouldReplace = req.body.importMode === 'replace' || req.body.cleanReplace === 'true' || req.body.cleanReplace === true;
+    if (shouldReplace) {
+      await client.query('DELETE FROM products');
+      try {
+        await client.query('ALTER SEQUENCE products_id_seq RESTART WITH 1');
+      } catch {
+        // ignore sequence restart failure if table has different sequence name
+      }
+    }
+
     const insertedRows = [];
     for (let batchStart = 0; batchStart < preparedProducts.length; batchStart += INSERT_BATCH_SIZE) {
       const batch = preparedProducts.slice(batchStart, batchStart + INSERT_BATCH_SIZE);

@@ -550,6 +550,7 @@ function ExcelImportModal({
   const [error, setError] = useState("");
   const [details, setDetails] = useState<string[]>([]);
   const [result, setResult] = useState<ExcelImportResult | null>(null);
+  const [cleanReplace, setCleanReplace] = useState(true);
   const categoryMenuRef = useRef<HTMLDivElement>(null);
 
   const selectedCategory = categoryChoice === NEW_CATEGORY
@@ -581,6 +582,7 @@ function ExcelImportModal({
     const body = new FormData();
     body.append("file", file);
     body.append("category", selectedCategory);
+    body.append("cleanReplace", String(cleanReplace));
 
     try {
       const response = await fetch(apiUrl("/api/products/import"), {
@@ -756,6 +758,20 @@ function ExcelImportModal({
                     setError("");
                     setFile(selectedFile);
                   }} className="hidden" />
+              </label>
+            </div>
+
+            <div className="flex items-start gap-3 p-3 bg-amber-50/80 rounded-xl border border-amber-200">
+              <input
+                type="checkbox"
+                id="cleanReplace"
+                checked={cleanReplace}
+                onChange={(e) => setCleanReplace(e.target.checked)}
+                className="mt-0.5 h-4 w-4 rounded border-amber-400 text-emerald-600 focus:ring-emerald-500"
+              />
+              <label htmlFor="cleanReplace" className="text-xs text-amber-900 cursor-pointer select-none">
+                <span className="font-bold">Replace existing catalog (Clean re-import)</span>
+                <span className="block font-normal text-amber-700 mt-0.5">Recommended for full updates to ensure all product images and categories refresh cleanly without duplicates.</span>
               </label>
             </div>
 

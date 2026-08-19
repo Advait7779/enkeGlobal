@@ -12,7 +12,7 @@ COPY package.json package-lock.json ./
 RUN npm ci --omit=dev
 
 COPY --chown=node:node . .
-RUN mkdir -p /app/uploads && chown -R node:node /app
+RUN mkdir -p /app/uploads && chmod 777 /app/uploads && chown -R node:node /app
 
 USER node
 
