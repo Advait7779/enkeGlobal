@@ -135,7 +135,18 @@ export default function Shop() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    fetch(apiUrl("/api/products?limit=250"))
+    // Fetch dynamic categories
+    fetch(apiUrl("/api/products/categories"))
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data?.categories && Array.isArray(data.categories) && data.categories.length > 0) {
+          setCategories((prev) => Array.from(new Set([...prev, ...data.categories])));
+        }
+      })
+      .catch(() => {});
+
+    // Fetch products
+    fetch(apiUrl("/api/products?limit=500"))
       .then((res) => {
         if (!res.ok) throw new Error("Failed to fetch products");
         return res.json() as Promise<{ products?: unknown[] }>;
@@ -146,8 +157,8 @@ export default function Shop() {
           setProducts(parsed);
 
           // Dynamically gather unique categories from loaded products
-          const uniqueCats = Array.from(new Set(parsed.map(p => p.category).filter(Boolean)));
-          setCategories(prev => Array.from(new Set([...prev, ...uniqueCats])));
+          const uniqueCats = Array.from(new Set(parsed.map((p) => p.category).filter(Boolean)));
+          setCategories((prev) => Array.from(new Set([...prev, ...uniqueCats])));
         }
       })
       .catch(() => {});

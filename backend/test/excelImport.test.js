@@ -55,3 +55,44 @@ test('rejects workbooks with invalid product rows without returning a partial im
     (error) => Array.isArray(error.details) && error.details[0].includes('product name is required')
   );
 });
+
+test('auto-detects categories across multiple sheets and handles Model/Description fallback', async () => {
+  const workbook = new ExcelJS.Workbook();
+  
+  // Empty sheet
+  workbook.addWorksheet('A-EMPTY');
+
+  // Pneumatic sheet
+  const sheet1 = workbook.addWorksheet('B-PNEUM');
+  sheet1.addRow(['Sr.', 'Make', 'Model', 'Description']);
+  sheet1.addRow([1, 'CAMOZZI', '27M2A40A080', 'PNEUMATIC CYLINDER Round 40mm']);
+  sheet1.addRow([2, 'SPAC', '', 'AUTO DRAIN VALVE HIGH FLOW']); // Blank model -> fallback to description
+
+  // Mechanical sheet
+  const sheet2 = workbook.addWorksheet('C-MECH');
+  sheet2.addRow(['Sr.', 'Make', 'Model', 'Description']);
+  sheet2.addRow([1, 'SKF', '6204-2RS', 'DEEP GROOVE BALL BEARING']);
+
+  const buffer = await workbook.xlsx.writeBuffer();
+  const parsed = await parseProductWorkbook(buffer, '__auto__');
+
+  assert.equal(parsed.isMultiCategory, true);
+  assert.equal(parsed.products.length, 3);
+  assert.deepEqual(parsed.categoriesDetected, ['Pneumatic', 'Mechanical']);
+
+  // Product 1
+  assert.equal(parsed.products[0].name, '27M2A40A080');
+  assert.equal(parsed.products[0].manufacturer, 'CAMOZZI');
+  assert.equal(parsed.products[0].category, 'Pneumatic');
+
+  // Product 2 (blank model -> used description)
+  assert.equal(parsed.products[1].name, 'AUTO DRAIN VALVE HIGH FLOW');
+  assert.equal(parsed.products[1].manufacturer, 'SPAC');
+  assert.equal(parsed.products[1].category, 'Pneumatic');
+
+  // Product 3
+  assert.equal(parsed.products[2].name, '6204-2RS');
+  assert.equal(parsed.products[2].manufacturer, 'SKF');
+  assert.equal(parsed.products[2].category, 'Mechanical');
+});
+

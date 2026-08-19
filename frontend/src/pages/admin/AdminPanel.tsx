@@ -45,9 +45,12 @@ interface Enquiry {
 interface ExcelImportResult {
   imported: number;
   category: string;
+  categoriesDetected?: string[];
+  isMultiCategory?: boolean;
   worksheet: string;
   warnings: string[];
 }
+
 
 type TabType = "dashboard" | "products" | "leads";
 
@@ -537,8 +540,9 @@ function ExcelImportModal({
   onClose: () => void;
   onImported: (result: ExcelImportResult) => void;
 }) {
+  const AUTO_DETECT = "__auto__";
   const NEW_CATEGORY = "__new_category__";
-  const [categoryChoice, setCategoryChoice] = useState(categories[0] || "Electronic");
+  const [categoryChoice, setCategoryChoice] = useState(AUTO_DETECT);
   const [categoryMenuOpen, setCategoryMenuOpen] = useState(false);
   const [newCategory, setNewCategory] = useState("");
   const [file, setFile] = useState<File | null>(null);
@@ -548,7 +552,11 @@ function ExcelImportModal({
   const [result, setResult] = useState<ExcelImportResult | null>(null);
   const categoryMenuRef = useRef<HTMLDivElement>(null);
 
-  const selectedCategory = categoryChoice === NEW_CATEGORY ? newCategory.trim() : categoryChoice;
+  const selectedCategory = categoryChoice === NEW_CATEGORY
+    ? newCategory.trim()
+    : categoryChoice === AUTO_DETECT
+      ? "__auto__"
+      : categoryChoice;
 
   useEffect(() => {
     if (!categoryMenuOpen) return;
@@ -590,6 +598,8 @@ function ExcelImportModal({
       const importResult: ExcelImportResult = {
         imported: data.imported || 0,
         category: data.category || selectedCategory,
+        categoriesDetected: data.categoriesDetected || [],
+        isMultiCategory: Boolean(data.isMultiCategory),
         worksheet: data.worksheet || "",
         warnings: Array.isArray(data.warnings) ? data.warnings : [],
       };
@@ -612,7 +622,7 @@ function ExcelImportModal({
             </div>
             <div>
               <h2 className="text-xl font-bold text-gray-900">Import Products from Excel</h2>
-              <p className="text-xs text-gray-500">All rows will be added to one selected category</p>
+              <p className="text-xs text-gray-500">Supports multi-tab workbooks, categories & embedded pictures</p>
             </div>
           </div>
           <button type="button" onClick={onClose} disabled={importing}
@@ -627,23 +637,38 @@ function ExcelImportModal({
               <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center">
                 <CheckCircle size={34} />
               </div>
-              <h3 className="text-2xl font-bold text-gray-900">Import completed</h3>
+              <h3 className="text-2xl font-bold text-gray-900">Import completed successfully!</h3>
               <p className="text-gray-600 mt-2">
-                <strong>{result.imported}</strong> products were added to <strong>{result.category}</strong>
-                {result.worksheet ? ` from “${result.worksheet}”` : ""}.
+                <strong>{result.imported}</strong> products were added
+                {result.worksheet ? ` across sheets: ${result.worksheet}` : ""}.
               </p>
+
+              {result.categoriesDetected && result.categoriesDetected.length > 0 && (
+                <div className="mt-4 p-4 bg-emerald-50 rounded-xl border border-emerald-200 text-left">
+                  <p className="text-xs font-bold uppercase tracking-wider text-emerald-800 mb-2">
+                    Categories Added / Updated ({result.categoriesDetected.length})
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {result.categoriesDetected.map((cat) => (
+                      <span key={cat} className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-white text-emerald-800 border border-emerald-300 shadow-sm">
+                        {cat}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
             {result.warnings.length > 0 && (
               <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
-                <p className="text-sm font-bold text-amber-800 mb-2">Imported with warnings</p>
-                <ul className="space-y-1 text-xs text-amber-700 list-disc pl-5">
+                <p className="text-sm font-bold text-amber-800 mb-2">Imported with warnings ({result.warnings.length})</p>
+                <ul className="space-y-1 text-xs text-amber-700 list-disc pl-5 max-h-36 overflow-y-auto">
                   {result.warnings.map((warning, index) => <li key={index}>{warning}</li>)}
                 </ul>
               </div>
             )}
             <button type="button" onClick={onClose}
-              className="w-full mt-6 bg-emerald-700 hover:bg-emerald-800 text-white py-3 rounded-xl font-bold transition">
-              Done
+              className="w-full mt-6 bg-emerald-700 hover:bg-emerald-800 text-white py-3 rounded-xl font-bold transition shadow-lg shadow-emerald-700/20">
+              Done & View Products
             </button>
           </div>
         ) : (
@@ -660,20 +685,34 @@ function ExcelImportModal({
             )}
 
             <div>
-              <label className="block text-sm font-bold text-gray-800 mb-2">1. Choose target category *</label>
+              <label className="block text-sm font-bold text-gray-800 mb-2">1. Choose Category Mode *</label>
               <div className="relative" ref={categoryMenuRef}>
                 <button type="button" onClick={() => setCategoryMenuOpen((open) => !open)}
                   aria-expanded={categoryMenuOpen}
                   className={`w-full flex items-center justify-between px-4 py-3 border rounded-xl bg-white text-sm font-semibold text-gray-800 transition focus:outline-none ${categoryMenuOpen ? "border-emerald-500 ring-2 ring-emerald-500/10" : "border-gray-300 hover:border-emerald-400"}`}>
-                  <span>{categoryChoice === NEW_CATEGORY ? "Add a new category" : categoryChoice}</span>
+                  <span>
+                    {categoryChoice === AUTO_DETECT
+                      ? "⚡ Auto-detect categories from Excel sheets (Recommended)"
+                      : categoryChoice === NEW_CATEGORY
+                        ? "Add a new category"
+                        : `Assign all to: ${categoryChoice}`}
+                  </span>
                   <ChevronDown size={17} className={`text-gray-400 transition-transform ${categoryMenuOpen ? "rotate-180" : ""}`} />
                 </button>
                 {categoryMenuOpen && (
-                  <div className="absolute left-0 right-0 top-full mt-2 z-30 bg-white rounded-xl shadow-xl border border-gray-200 py-1.5 overflow-hidden animate-scale-up">
+                  <div className="absolute left-0 right-0 top-full mt-2 z-30 bg-white rounded-xl shadow-xl border border-gray-200 py-1.5 overflow-hidden animate-scale-up max-h-64 overflow-y-auto">
+                    <button type="button"
+                      onClick={() => { setCategoryChoice(AUTO_DETECT); setCategoryMenuOpen(false); }}
+                      className={`w-full flex items-center justify-between text-left px-4 py-2.5 text-sm font-bold transition ${categoryChoice === AUTO_DETECT ? "bg-emerald-50 text-emerald-700" : "text-emerald-700 hover:bg-emerald-50/50"}`}>
+                      <span>⚡ Auto-detect categories from Excel sheets</span>
+                      {categoryChoice === AUTO_DETECT && <CheckCircle size={15} />}
+                    </button>
+                    <div className="h-px bg-gray-100 my-1" />
+                    <p className="px-4 py-1 text-[11px] font-bold uppercase tracking-wider text-gray-400">Or assign all to single category</p>
                     {categories.map((category) => (
                       <button key={category} type="button"
                         onClick={() => { setCategoryChoice(category); setCategoryMenuOpen(false); }}
-                        className={`w-full flex items-center justify-between text-left px-4 py-2.5 text-sm font-semibold transition ${categoryChoice === category ? "bg-emerald-50 text-emerald-700" : "text-gray-700 hover:bg-gray-50"}`}>
+                        className={`w-full flex items-center justify-between text-left px-4 py-2 text-sm font-medium transition ${categoryChoice === category ? "bg-emerald-50 text-emerald-700 font-semibold" : "text-gray-700 hover:bg-gray-50"}`}>
                         {category}
                         {categoryChoice === category && <CheckCircle size={15} />}
                       </button>
@@ -682,7 +721,7 @@ function ExcelImportModal({
                     <button type="button"
                       onClick={() => { setCategoryChoice(NEW_CATEGORY); setCategoryMenuOpen(false); }}
                       className={`w-full flex items-center gap-2 text-left px-4 py-2.5 text-sm font-bold transition ${categoryChoice === NEW_CATEGORY ? "bg-emerald-50 text-emerald-700" : "text-emerald-700 hover:bg-emerald-50"}`}>
-                      <Plus size={16} />Add a new category
+                      <Plus size={16} />Add a new custom category
                     </button>
                   </div>
                 )}
@@ -692,15 +731,19 @@ function ExcelImportModal({
                   maxLength={100} autoFocus placeholder="Enter new category name"
                   className="w-full mt-3 px-4 py-3 border border-gray-300 rounded-xl text-sm focus:outline-none focus:border-emerald-500" />
               )}
-              <p className="text-xs text-gray-500 mt-2">This category is applied to every imported product; any Excel category column is ignored.</p>
+              <p className="text-xs text-gray-500 mt-2">
+                {categoryChoice === AUTO_DETECT
+                  ? "✓ Reads every sheet tab (e.g. B-PNEUM ➔ Pneumatic, C-MECH ➔ Mechanical, etc.) and auto-creates their categories."
+                  : "This single category will be applied to every imported product row."}
+              </p>
             </div>
 
             <div>
-              <label className="block text-sm font-bold text-gray-800 mb-2">2. Upload Excel workbook *</label>
+              <label className="block text-sm font-bold text-gray-800 mb-2">2. Upload Excel workbook (.xlsx) *</label>
               <label className={`block rounded-2xl border-2 border-dashed p-7 text-center cursor-pointer transition ${file ? "border-emerald-400 bg-emerald-50" : "border-gray-300 hover:border-emerald-400 hover:bg-emerald-50/40"}`}>
                 <FileUp size={32} className={`mx-auto mb-3 ${file ? "text-emerald-700" : "text-gray-400"}`} />
                 <span className="block text-sm font-bold text-gray-800">{file ? file.name : "Choose an .xlsx file"}</span>
-                <span className="block text-xs text-gray-500 mt-1">Maximum 1 GB and 10,000 product rows</span>
+                <span className="block text-xs text-gray-500 mt-1">Multi-sheet workbook with embedded photos supported (up to 1 GB)</span>
                 <input type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                   onChange={(event) => {
                     const selectedFile = event.target.files?.[0] || null;
@@ -722,10 +765,10 @@ function ExcelImportModal({
                 Cancel
               </button>
               <button type="submit" disabled={importing || !file || !selectedCategory}
-                className="flex-1 bg-emerald-700 text-white py-3 rounded-xl font-bold text-sm hover:bg-emerald-800 transition flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
+                className="flex-1 bg-emerald-700 text-white py-3 rounded-xl font-bold text-sm hover:bg-emerald-800 transition flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-emerald-700/20">
                 {importing ? (
-                  <><svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" /></svg>Importing...</>
-                ) : <><FileSpreadsheet size={17} />Import Products</>}
+                  <><svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" /></svg>Importing Products & Photos...</>
+                ) : <><FileSpreadsheet size={17} />Import Products & Categories</>}
               </button>
             </div>
           </form>
@@ -1034,9 +1077,16 @@ export default function AdminPanel() {
   };
 
   const handleProductsImported = (result: ExcelImportResult) => {
-    handleAddCategory(result.category);
+    if (Array.isArray(result.categoriesDetected) && result.categoriesDetected.length > 0) {
+      result.categoriesDetected.forEach(handleAddCategory);
+    } else if (result.category && result.category !== "__auto__") {
+      handleAddCategory(result.category);
+    }
     setProductsPage(1);
-    showToast(`${result.imported} products imported into ${result.category}`);
+    const catLabel = result.categoriesDetected && result.categoriesDetected.length > 0
+      ? `${result.categoriesDetected.length} categories`
+      : result.category;
+    showToast(`${result.imported} products imported across ${catLabel}`);
     fetchProducts();
     fetchDashboard();
   };

@@ -83,6 +83,26 @@ router.get('/', async (req, res) => {
   }
 });
 
+// GET /api/products/categories — public
+router.get('/categories', async (_req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT category, COUNT(*)::int as count 
+       FROM products 
+       WHERE category IS NOT NULL AND TRIM(category) != '' 
+       GROUP BY category 
+       ORDER BY category ASC`
+    );
+    res.json({
+      categories: result.rows.map((r) => r.category),
+      details: result.rows,
+    });
+  } catch (err) {
+    console.error('GET /categories error:', err.message);
+    res.status(500).json({ error: 'Failed to fetch categories' });
+  }
+});
+
 // GET /api/products/:id — public
 // GET /api/products/stats/summary — admin
 router.get('/stats/summary', requireAdmin, async (req, res) => {
@@ -104,8 +124,6 @@ router.get('/stats/summary', requireAdmin, async (req, res) => {
   }
 });
 
-// POST /api/products — admin
-// Public product detail. Numeric matching keeps named routes from being shadowed.
 // Admin-only bulk import from an .xlsx workbook.
 router.post('/import', requireAdmin, acceptExcelUpload, async (req, res) => {
   let client = null;
@@ -188,6 +206,8 @@ router.post('/import', requireAdmin, acceptExcelUpload, async (req, res) => {
       success: true,
       imported: insertedRows.length,
       category: parsed.category,
+      categoriesDetected: parsed.categoriesDetected || [],
+      isMultiCategory: Boolean(parsed.isMultiCategory),
       worksheet: parsed.worksheetName,
       products: insertedRows.slice(0, 50),
       responseTruncated: insertedRows.length > 50,
