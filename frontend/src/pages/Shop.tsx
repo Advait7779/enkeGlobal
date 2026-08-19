@@ -131,11 +131,12 @@ export default function Shop() {
   const selectedCategory = searchParams.get("category");
   const searchQuery = searchParams.get("search");
   const [sortBy] = useState("featured");
+  const [totalCount, setTotalCount] = useState(0);
 
   const navigate = useNavigate();
 
+  // Fetch categories once on mount
   useEffect(() => {
-    // Fetch dynamic categories
     fetch(apiUrl("/api/products/categories"))
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
@@ -144,37 +145,36 @@ export default function Shop() {
         }
       })
       .catch(() => {});
+  }, []);
 
-    // Fetch products
-    fetch(apiUrl("/api/products?limit=500"))
+  // Re-fetch products whenever category or search changes (server-side filtering)
+  useEffect(() => {
+    const params = new URLSearchParams({ limit: "500" });
+    if (selectedCategory) params.set("category", selectedCategory);
+    if (searchQuery) params.set("search", searchQuery);
+
+    fetch(apiUrl(`/api/products?${params.toString()}`))
       .then((res) => {
         if (!res.ok) throw new Error("Failed to fetch products");
-        return res.json() as Promise<{ products?: unknown[] }>;
+        return res.json() as Promise<{ products?: unknown[]; total?: number }>;
       })
       .then((response) => {
         if (response.products && response.products.length > 0) {
           const parsed = response.products.map(normalizeProduct);
           setProducts(parsed);
-
-          // Dynamically gather unique categories from loaded products
+          setTotalCount(response.total ?? parsed.length);
+          // Add any new categories discovered from products
           const uniqueCats = Array.from(new Set(parsed.map((p) => p.category).filter(Boolean)));
           setCategories((prev) => Array.from(new Set([...prev, ...uniqueCats])));
+        } else {
+          setProducts([]);
+          setTotalCount(0);
         }
       })
       .catch(() => {});
-  }, []);
+  }, [selectedCategory, searchQuery]);
 
-  const filteredProducts = products.filter((product) => {
-    const categoryMatch =
-      !selectedCategory || product.category === selectedCategory;
-    const searchMatch =
-      !searchQuery ||
-      product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (product.description && product.description.toLowerCase().includes(searchQuery.toLowerCase()));
-    return categoryMatch && searchMatch;
-  });
-
-  const sortedProducts = [...filteredProducts].sort((a, b) => {
+  const sortedProducts = [...products].sort((a, b) => {
     if (sortBy === "rating") return b.rating - a.rating;
     return 0;
   });
@@ -192,7 +192,7 @@ export default function Shop() {
             </p>
           </div>
           <div className="text-sm text-gray-500 font-medium">
-            Showing {sortedProducts.length} products{" "}
+            Showing {sortedProducts.length}{totalCount > sortedProducts.length ? ` of ${totalCount}` : ""} products{" "}
             {selectedCategory && `in ${selectedCategory}`}
           </div>
         </div>
