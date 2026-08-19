@@ -167,7 +167,9 @@ router.post('/import', requireAdmin, acceptExcelUpload, async (req, res) => {
     client = await pool.connect();
     await client.query('BEGIN');
 
+    let finalProductsToInsert = [...preparedProducts];
     const shouldReplace = req.body.importMode === 'replace' || req.body.cleanReplace === 'true' || req.body.cleanReplace === true;
+
     if (shouldReplace) {
       await client.query('DELETE FROM products');
       try {
@@ -175,11 +177,33 @@ router.post('/import', requireAdmin, acceptExcelUpload, async (req, res) => {
       } catch {
         // ignore sequence restart failure if table has different sequence name
       }
+
+      // Prepend initial catalogue products from Products.json so base catalogue is preserved
+      try {
+        const baseProductsData = require('../data/Products.json');
+        const baseProducts = Object.values(baseProductsData).map((p) => ({
+          category: p.category || '',
+          manufacturer: p.manufacturer || '',
+          name: p.name || '',
+          description: p.description || '',
+          in_stock: p.inStock !== undefined ? p.inStock : true,
+          rating: p.rating || 4.5,
+          reviews: p.reviews || 0,
+          image: p.image || '',
+          badge: p.badge || '',
+          badge_color: p.badgeColor || 'bg-blue-500',
+          price: p.price || 0,
+          old_price: p.oldPrice || 0,
+        }));
+        finalProductsToInsert = [...baseProducts, ...preparedProducts];
+      } catch (seedErr) {
+        console.error('Failed to load base products during replace:', seedErr.message);
+      }
     }
 
     const insertedRows = [];
-    for (let batchStart = 0; batchStart < preparedProducts.length; batchStart += INSERT_BATCH_SIZE) {
-      const batch = preparedProducts.slice(batchStart, batchStart + INSERT_BATCH_SIZE);
+    for (let batchStart = 0; batchStart < finalProductsToInsert.length; batchStart += INSERT_BATCH_SIZE) {
+      const batch = finalProductsToInsert.slice(batchStart, batchStart + INSERT_BATCH_SIZE);
       const values = [];
       const placeholders = batch.map((product, index) => {
         const offset = index * 12;
